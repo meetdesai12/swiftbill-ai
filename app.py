@@ -104,20 +104,28 @@ with col1:
 
 # --- 5. AI Processing Logic ---
 if process_btn:
+    # Fallback to the secure Streamlit secret if the sidebar is empty
     if not api_key:
-        st.error("Please supply your Gemini API key in the sidebar.")
+        try:
+            api_key = st.secrets["GEMINI_API_KEY"]
+        except Exception:
+            pass
+
+    if not api_key:
+        st.error("Please supply your Gemini API key in the sidebar or Streamlit Secrets.")
     else:
+        # Use the variable here, NEVER a hardcoded string
         client = genai.Client(api_key=api_key)
         
         system_instruction = """
         Extract billing entities from the text. 
         DO NOT invent prices. Just extract customer details and requested services with quantities.
         """
-
+        
         with st.spinner("Analyzing message with Gemini..."):
             try:
                 response = client.models.generate_content(
-                    model="gemini-3.6-flash",
+                    model="gemini-1.5-flash",
                     contents=raw_input,
                     config=types.GenerateContentConfig(
                         system_instruction=system_instruction,
@@ -126,7 +134,6 @@ if process_btn:
                     )
                 )
                 
-                # The GenAI SDK automatically parses the JSON back into our Pydantic object
                 if response.parsed:
                     parsed_data = response.parsed
                     if isinstance(parsed_data, BaseModel):
@@ -140,7 +147,6 @@ if process_btn:
                 
             except Exception as e:
                 st.error(f"Error communicating with Gemini: {e}")
-
 # --- 6. Review & Export Dashboard ---
 if "extracted_data" in st.session_state:
     data = st.session_state["extracted_data"]
